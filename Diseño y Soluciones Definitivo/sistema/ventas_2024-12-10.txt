@@ -1,0 +1,8 @@
+Historial de Ventas del Día
+Fecha: 2024-12-10
+====================================
+ID: 68, Cliente: Fernanda, Metodo de Pago: deuda, Vendedor: admin, Total: $1666
+ID: 69, Cliente: None, Metodo de Pago: tarjeta, Vendedor: admin, Total: $6996
+====================================
+Total de Ventas: 2
+Suma Total: $8662

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Productos - Sistema de Control de Inventario</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        footer {
+            position: static;
+            bottom: 0;
+            width: 100%;
+            background-color: #f8f9fa;
+            z-index: 10;
+        }
+        .scrollable-container {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .scrollable-container::-webkit-scrollbar {
+            width: 10px;
+        }
+        .scrollable-container::-webkit-scrollbar-thumb {
+            background: #17a2b8;
+            border-radius: 10px;
+        }
+        .scrollable-container::-webkit-scrollbar-thumb:hover {
+            background: #138496;
+        }
+        .scrollable-container::-webkit-scrollbar-track {
+            background: #f8f9fa;
+        }
+        .productRow {
+            transition: opacity 0.3s ease;
+        }
+
+        .hidden-row {
+            display: none;
+        }
+        .message-row {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .message-row td {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-primary text-white py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3">Gestión de Productos</h1>
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'logout' %}" class="btn btn-light">Cerrar sesión</a>
+            {% endif %}
+        </div>
+    </header>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                <div class="sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{% url 'Home' %}">
+                                <i class="fas fa-home"></i> Menu
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'GestionProductos' %}">
+                                <i class="fas fa-box"></i> Gestión de Productos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'GestionProveedores' %}">
+                                <i class="fas fa-truck"></i> Gestión de Proveedores
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'GestionClientes' %}">
+                                <i class="fas fa-users"></i> Gestión de Clientes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'GestionDepartamentos' %}">
+                                <i class="fas fa-building"></i> Gestión de Categorías
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'HistorialVentas' %}">
+                                <i class="fas fa-history"></i>Historial de Ventas
+                            </a>
+                        </li>
+                        {% if user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'register' %}">
+                                <i class="fas fa-user-plus"></i> Registrar Usuarios
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </nav>
+            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title">Resumen de Productos</h5>
+                        {% if user.is_superuser %}
+                            <a href="{% url 'CrearProducto' %}" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Agregar Producto
+                            </a>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Total de productos:</strong> {{ total_productos }}</p>
+                        <p><strong>Suma del precio costo total:</strong> {{ total_precio_costo }} CLP</p>
+                    </div>
+                </div>
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title">Lista de Productos</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Buscar por código de producto" onkeyup="searchProduct()">
+                        </div>
+                        
+                        <div class="scrollable-container">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Precio Costo</th>
+                                        <th>Precio Venta</th>
+                                        <th>Stock Mínimo</th>
+                                        <th>Stock Actual</th>
+                                        <th>Categoría</th>
+                                        {% if user.is_superuser %}
+                                            <th>Acciones</th>
+                                        {% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody id="productTable">
+                                    {% for producto in productos %}
+                                    <tr class="productRow">
+                                        <td>{{ producto.codigo_producto }}</td>
+                                        <td>{{ producto.nombre_producto }}</td>
+                                        <td>{{ producto.precio_costo }}</td>
+                                        <td>{{ producto.precio_venta }}</td>
+                                        <td>{{ producto.stock_minimo }}</td>
+                                        <td>{{ producto.stock_actual }}</td>
+                                        <td>{{ producto.categoria.nombre }}</td>
+                                        <td>
+                                            {% if user.is_superuser %}
+                                                <a href="{% url 'ModificarProducto' producto.codigo_producto %}" class="btn btn-warning btn-sm">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'EliminarProducto' producto.codigo_producto %}" class="btn btn-danger btn-sm">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center">No hay productos disponibles.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+            </main>
+        </div>
+    </div>
+    <footer class="bg-light text-center py-3 mt-4">
+        <p>&copy; 2024</p>
+    </footer>
+    <script>
+        function searchProduct() {
+            var input, filter, table, rows, cellCodigo, cellNombre, i, txtValueCodigo, txtValueNombre;
+            input = document.getElementById("searchInput");
+            filter = input.value.toUpperCase();
+            table = document.getElementById("productTable");
+            rows = table.getElementsByTagName("tr");
+            var found = false;
+            var isNumericSearch = /^[0-9]+$/.test(filter);
+            for (i = 0; i < rows.length; i++) {
+                cellCodigo = rows[i].getElementsByTagName("td")[0];
+                cellNombre = rows[i].getElementsByTagName("td")[1];
+                if (cellCodigo && cellNombre) {
+                    txtValueCodigo = cellCodigo.textContent || cellCodigo.innerText;
+                    txtValueNombre = cellNombre.textContent || cellNombre.innerText;
+                    if (isNumericSearch) {
+                        if (txtValueCodigo.indexOf(filter) > -1) {
+                            rows[i].classList.remove('hidden-row');
+                            found = true;
+                        } else {
+                            rows[i].classList.add('hidden-row');
+                        }
+                    } else {
+                        if (txtValueCodigo.toUpperCase().indexOf(filter) > -1 || txtValueNombre.toUpperCase().indexOf(filter) > -1) {
+                            rows[i].classList.remove('hidden-row');
+                            found = true;
+                        } else {
+                            rows[i].classList.add('hidden-row');
+                        }
+                    }
+                }
+            }
+            if (!found) {
+                var messageRow = table.querySelector(".message-row");
+                if (!messageRow) {
+                    var newRow = table.insertRow();
+                    newRow.classList.add('message-row');
+                    var cell = newRow.insertCell(0);
+                    cell.colSpan = 7;
+                    cell.classList.add('text-center');
+                    cell.innerHTML = "Producto con el código o nombre no encontrado.";
+                }
+            } else {
+                var messageRow = table.querySelector(".message-row");
+                if (messageRow) {
+                    messageRow.remove();
+                }
+            }
+        }
+    </script>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
