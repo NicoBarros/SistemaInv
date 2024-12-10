@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ventas - Sistema de Control de Inventario</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #f8f9fa;
+            z-index: 10;
+        }
+        .main-content {
+            max-height: calc(100vh - 150px);
+            overflow-y: auto;
+        }
+        .sales-section {
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .card-group .card {
+            flex: 1 0 21%;
+            margin: 0.5%;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="bg-primary text-white py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3">Ventas</h1>
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'logout' %}" class="btn btn-light">Cerrar sesión</a>
+            {% endif %}
+        </div>
+    </header>
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                <div class="sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{% url 'Home' %}">
+                                <i class="fas fa-home"></i> Menu
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'GestionProductos'%}">
+                                <i class="fas fa-box"></i> Gestión de Productos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'GestionProveedores'%}">
+                                <i class="fas fa-truck"></i> Gestión de Proveedores
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'GestionClientes'%}">
+                                <i class="fas fa-users"></i> Gestión de Clientes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'GestionDepartamentos'%}">
+                                <i class="fas fa-building"></i> Gestión de Categorías
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'HistorialVentas' %}">
+                                <i class="fas fa-history"></i> Historial de Ventas
+                            </a>
+                        </li>
+                        {% if user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'register' %}">
+                                <i class="fas fa-user-plus"></i> Registrar Usuarios
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                </div>
+            </nav>
+            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4 main-content">
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title">Nueva Venta</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <form method="POST" action="{% url 'AgregarProducto' %}">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="producto">Buscar Producto (por ID o nombre):</label>
+                                <input type="text" id="producto" name="producto" class="form-control" required oninput="buscarProductos()">
+                                <ul id="lista_resultados" class="autocomplete-results"></ul>
+                            </div>
+                            <div class="form-group">
+                                <label for="cantidad">Cantidad:</label>
+                                <input type="number" id="cantidad" name="cantidad" class="form-control" min="1" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Añadir</button>
+                        </form>
+                    
+                        {% if mensaje %}
+                            <div class="alert alert-info mt-4">
+                                {{ mensaje }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <script>
+                        function buscarProductos() {
+                            const query = document.getElementById('producto').value;
+                            const listaResultados = document.getElementById('lista_resultados');
+                    
+                            if (query.length >= 1) {  
+                                fetch(`/buscar_productos/?q=${query}`)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        listaResultados.innerHTML = '';  
+                                        if (data.productos.length > 0) {
+                                            listaResultados.style.display = 'block';  
+                                            data.productos.forEach(producto => {
+                                                const item = document.createElement('li');
+                                                item.classList.add('list-group-item');
+                                                item.textContent = `${producto.codigo} - ${producto.nombre}`;
+                                                item.onclick = function() {
+                                                    document.getElementById('producto').value = producto.codigo;
+                                                    listaResultados.style.display = 'none';  
+                                                };
+                                                listaResultados.appendChild(item);
+                                            });
+                                        } else {
+                                            listaResultados.style.display = 'none'; 
+                                        }
+                                    });
+                            } else {
+                                listaResultados.style.display = 'none'; 
+                            }
+                        }
+                    </script>
+                    
+                    <div class="sales-section mt-4">
+                        <h5>Productos en la Venta</h5>
+                        <table class="table table-bordered table-hover">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre</th>
+                                    <th>Precio de Venta</th>
+                                    <th>Stock Actual</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if productos_agregados %}
+                                    {% for producto in productos_agregados %}
+                                        <tr>
+                                            <td>{{ producto.codigo }}</td>
+                                            <td>{{ producto.nombre }}</td>
+                                            <td>{{ producto.precio_venta }}</td>
+                                            <td>{{ producto.stock_actual }}</td>
+                                            <td>
+                                                <a href="{% url 'QuitarProducto' producto.codigo %}" class="btn btn-danger btn-sm">
+                                                    <i class="fas fa-trash-alt"></i> Quitar
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">No hay productos agregados a la venta.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <h4>Total: ${{ total }}</h4>
+                <div>
+                    <form method="POST" action="{% url 'RegistrarVenta' %}">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="metodo_pago">Método de Pago</label>
+                            {{ form.metodo_pago }}
+                        </div>
+                        <div class="form-group">
+                            <label for="id_cliente">Cliente (opcional)</label>
+                            {{ form.id_cliente }}
+                        </div>
+                        <button type="submit" class="btn btn-success">Terminar Venta</button>
+                    </form>
+                    <button id="cancelarVentaBtn" class="btn btn-danger mt-2">Cancelar venta</button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div> 
+    <footer class="bg-light text-center py-3">
+        <p>&copy; 2024</p>
+    </footer>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.getElementById('cancelarVentaBtn').addEventListener('click', function() {
+            const tableBody = document.querySelector('.sales-section table tbody');
+            tableBody.innerHTML = '';
+            document.querySelector('h4').textContent = 'Total: $0';
+            fetch('{% url "CancelarVenta" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                }
+            }).then(response => response.json())
+            .then(data => {
+                console.log(data.status); 
+            });
+        });
+    </script>
+</body>
+</html>
